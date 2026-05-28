@@ -1,8 +1,10 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -17,31 +19,48 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
 *.egg
+src/*.egg-info/
 
 # Virtual environments
+.env
+.venv
+env/
 venv/
 ENV/
-env/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Linting
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Logs and reports
-*.log
-discovery_report.json
-compliance_logs/
-migration_audit.log
-
-# Sensitive config
-config/local.yaml
-*.key
-*.pem
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Project specific
+output/
+*.enc
+*.enc.gz
+config/*.json
+*.log
+/tmp/

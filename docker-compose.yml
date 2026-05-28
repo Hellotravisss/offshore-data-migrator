@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  migrator:
+    build: .
+    volumes:
+      - ./data:/data
+      - ./output:/output
+    environment:
+      - ODM_PASSWORD=${ODM_PASSWORD:-changeme}
+    command: migrate --source /data --output /output

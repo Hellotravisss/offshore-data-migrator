@@ -1,0 +1,1 @@
+This is sample sensitive data: user@example.com, phone 555-123-4567

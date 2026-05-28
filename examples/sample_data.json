@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "full_name": "Alice Johnson",
+    "email": "alice@example.com",
+    "phone": "555-123-4567",
+    "national_id": "123-45-6789",
+    "address": "123 Main St, Toronto, ON",
+    "ip_address": "192.168.1.100",
+    "score": 95
+  },
+  {
+    "id": 2,
+    "full_name": "Bob Smith",
+    "email": "bob.smith@corp.io",
+    "phone": "+1-800-555-0199",
+    "national_id": "987-65-4321",
+    "address": "456 Oak Ave, Vancouver, BC",
+    "ip_address": "10.0.0.55",
+    "score": 82
+  },
+  {
+    "id": 3,
+    "full_name": "Charlie Brown",
+    "email": "charlie@privacy.net",
+    "phone": "416-555-7890",
+    "national_id": "456-78-9012",
+    "address": "789 Pine Rd, Montreal, QC",
+    "ip_address": "172.16.0.1",
+    "score": 77
+  }
+]

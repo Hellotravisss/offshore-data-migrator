@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "offshore-data-migrator"
+version = "1.0.0"
+description = "Secure, compliant offshore data migration toolkit"
+requires-python = ">=3.10"
+dependencies = [
+    "cryptography>=42.0",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1",
+    "pyarrow>=14.0",
+    "tqdm>=4.60",
+]
+
+[project.scripts]
+offshore-migrator = "offshore_migrator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

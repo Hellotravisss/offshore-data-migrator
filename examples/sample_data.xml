@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<employees>
+  <employee id="1">
+    <name>Alice Johnson</name>
+    <email>alice@example.com</email>
+    <phone>555-123-4567</phone>
+    <department>Engineering</department>
+    <salary>95000</salary>
+  </employee>
+  <employee id="2">
+    <name>Bob Smith</name>
+    <email>bob@company.io</email>
+    <phone>416-555-0123</phone>
+    <department>Marketing</department>
+    <salary>78000</salary>
+  </employee>
+  <employee id="3">
+    <name>Carol Williams</name>
+    <email>carol@startup.net</email>
+    <phone>+1-604-555-7890</phone>
+    <department>Finance</department>
+    <salary>88000</salary>
+  </employee>
+</employees>

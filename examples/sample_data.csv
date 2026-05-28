@@ -1,0 +1,6 @@
+name,email,phone,address,ssn,score
+Alice Johnson,alice@example.com,555-123-4567,"123 Main St, Toronto, ON",123-45-6789,95
+Bob Smith,bob.smith@corp.io,+1-800-555-0199,"456 Oak Ave, Vancouver, BC",987-65-4321,82
+Charlie Brown,charlie@privacy.net,416-555-7890,"789 Pine Rd, Montreal, QC",456-78-9012,77
+Diana Prince,diana@heroes.org,604-555-3210,"321 Elm Blvd, Calgary, AB",321-54-9876,91
+Eve Torres,eve.t@startup.co,905-555-6543,"654 Maple Dr, Ottawa, ON",654-32-1098,88
