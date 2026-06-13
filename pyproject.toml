@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "offshore-data-migrator"
-version = "1.1.0"
+dynamic = ["version"]
 description = "Secure, compliant offshore data migration toolkit"
 requires-python = ">=3.10"
 dependencies = [
@@ -17,6 +17,9 @@ dependencies = [
 
 [project.scripts]
 offshore-migrator = "offshore_migrator.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "offshore_migrator.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

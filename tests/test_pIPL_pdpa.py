@@ -212,9 +212,15 @@ class TestEdgeCasesPIPLPDPA:
         assert len(violations) == len(pipl.required_pii_fields)
 
     def test_generate_report_timestamp(self):
+        from datetime import datetime
+
         pipl = get_profile("pipl")
         report = generate_compliance_report(pipl, {})
-        assert report["timestamp"] == "2026-05-31"
+        assert "timestamp" in report
+        assert isinstance(report["timestamp"], str)
+        # Report stamps a full ISO-8601 UTC timestamp for audit precision.
+        parsed = datetime.fromisoformat(report["timestamp"])
+        assert parsed.tzinfo is not None
 
 
 # Ensure at least 20 tests by counting methods

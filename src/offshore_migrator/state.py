@@ -56,6 +56,16 @@ class MigrationState:
             row = cursor.fetchone()
             return row is not None and row[0] == file_hash
 
+    def get_recorded_hash(self, file_path: Path) -> Optional[str]:
+        """Return the stored hash for a path, or None if it was never recorded."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT file_hash FROM processed_files WHERE path = ?",
+                (str(file_path),)
+            )
+            row = cursor.fetchone()
+            return row[0] if row is not None else None
+
     def mark_processed(self, file_path: Path, file_hash: str, pii_count: int = 0):
         """Mark a file as processed."""
         with sqlite3.connect(self.db_path) as conn:

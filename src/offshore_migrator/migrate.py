@@ -17,13 +17,14 @@ from __future__ import annotations
 import gzip
 import json
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .crypto import encrypt_file
+from .crypto import encrypt_file_with_key, derive_key, CryptoError, SALT_LEN
 from .pii import (
     desensitize_csv,
     desensitize_json,
@@ -144,7 +145,8 @@ def run_migration(
         audit_log_path: Path for audit log file (JSON Lines).
         compress: Compress encrypted output with gzip.
         skip_patterns: Glob patterns for files to skip.
-        resume: Skip files that already exist in output directory.
+        resume: Skip files already processed (matched by path + SHA-256 hash);
+            changed files are re-processed. Uses/creates a SQLite state DB.
 
     Returns:
         MigrationReport with full details.
@@ -164,6 +166,27 @@ def run_migration(
         report.errors.append(f"Source directory not found: {source_dir}")
         logger.error(report.errors[-1])
         return report
+
+    # Resume relies on a SQLite state DB (path + SHA-256 hash). If the caller
+    # enabled resume via the Python API without supplying one, create the
+    # default state DB inside the output directory (matches CLI behaviour).
+    if resume and not dry_run and state is None:
+        from .state import MigrationState
+        state = MigrationState(output_dir / ".migration_state.db")
+
+    # Derive the encryption key ONCE per run. PBKDF2 (480k iterations) is
+    # intentionally expensive; running it per file made many-file migrations
+    # pay that cost N times. A single run-level salt is stored in every file
+    # header, so each output stays independently decryptable by password.
+    enc_key = enc_salt = None
+    if not dry_run:
+        try:
+            enc_salt = os.urandom(SALT_LEN)
+            enc_key = derive_key(password, enc_salt)
+        except CryptoError as exc:
+            report.errors.append(str(exc))
+            logger.error(str(exc))
+            return report
 
     # Initialize audit log
     audit = None
@@ -192,12 +215,19 @@ def run_migration(
             rel = str(f.relative_to(source_dir))
             if any(fnmatch.fnmatch(rel, pat) for pat in skip_patterns):
                 continue
-        # Resume: skip already processed
+        # Resume: skip a file whose encrypted output already exists, unless the
+        # state DB shows its content changed since it was processed (different
+        # SHA-256 hash) — in which case it is re-processed rather than skipped.
         if resume and not dry_run:
-            enc_path = output_dir / "encrypted" / (str(f.relative_to(source_dir)) + ".enc")
-            if enc_path.exists():
-                report.files_skipped.append(str(f.relative_to(source_dir)))
-                continue
+            rel = f.relative_to(source_dir)
+            enc_path = output_dir / "encrypted" / (str(rel) + ".enc")
+            output_exists = enc_path.exists() or Path(str(enc_path) + ".gz").exists()
+            if output_exists:
+                recorded = state.get_recorded_hash(rel) if state is not None else None
+                changed = recorded is not None and recorded != _get_file_hash(f)
+                if not changed:
+                    report.files_skipped.append(str(rel))
+                    continue
         files.append(f)
 
     if not files:
@@ -224,9 +254,9 @@ def run_migration(
             logger.warning(f"  {f.relative_to(source_dir)}: {size / (1024*1024):.1f} MB")
 
     if workers <= 1:
-        _process_sequential(files, source_dir, output_dir, password, dry_run, mode_label, report, show_progress, compress, audit, state)
+        _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state)
     else:
-        _process_parallel(files, source_dir, output_dir, password, dry_run, mode_label, report, workers, show_progress, compress, state)
+        _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state)
 
     # Compliance validation
     if compliance_profile and not dry_run:
@@ -280,21 +310,21 @@ def run_migration(
     return report
 
 
-def _process_sequential(files, source_dir, output_dir, password, dry_run, mode_label, report, show_progress, compress, audit, state=None):
+def _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state=None):
     """Process files one by one."""
     iterator = _maybe_tqdm(files, "Processing", show_progress)
     for filepath in iterator:
-        _process_single_file(filepath, source_dir, output_dir, password, dry_run, mode_label, report, compress, audit, state)
+        _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state)
 
 
-def _process_parallel(files, source_dir, output_dir, password, dry_run, mode_label, report, workers, show_progress, compress, state=None):
+def _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state=None):
     """Process files in parallel using ThreadPoolExecutor."""
     results = []
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_file = {
             executor.submit(
                 _process_single_file_standalone,
-                filepath, source_dir, output_dir, password, dry_run, compress, state
+                filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state
             ): filepath
             for filepath in files
         }
@@ -329,7 +359,7 @@ def _process_parallel(files, source_dir, output_dir, password, dry_run, mode_lab
             report.errors.append(error)
 
 
-def _process_single_file(filepath, source_dir, output_dir, password, dry_run, mode_label, report, compress, audit, state=None):
+def _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state=None):
     """Process a single file (sequential mode)."""
     rel = filepath.relative_to(source_dir)
     file_type = _classify_file(filepath)
@@ -373,7 +403,7 @@ def _process_single_file(filepath, source_dir, output_dir, password, dry_run, mo
             report.pii_reports[str(rel)] = pii_info
             logger.info(f"{mode_label} Desensitized: {rel} → {desensitized_path}")
 
-            encrypt_file(desensitized_path, encrypted_path, password)
+            encrypt_file_with_key(desensitized_path, encrypted_path, enc_key, enc_salt)
 
             # Optional compression
             if compress:
@@ -398,7 +428,7 @@ def _process_single_file(filepath, source_dir, output_dir, password, dry_run, mo
                 audit.log_error(str(rel), str(exc))
 
 
-def _process_single_file_standalone(filepath, source_dir, output_dir, password, dry_run, compress, state=None):
+def _process_single_file_standalone(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state=None):
     """Process a single file (parallel mode — no shared state)."""
     rel = filepath.relative_to(source_dir)
     file_type = _classify_file(filepath)
@@ -427,7 +457,7 @@ def _process_single_file_standalone(filepath, source_dir, output_dir, password, 
                 file_hash = _get_file_hash(filepath)
                 pii_count = pii_info.get("values_masked", 0) if pii_info else 0
                 state.mark_processed(rel, file_hash, pii_count)
-            encrypt_file(desensitized_path, encrypted_path, password)
+            encrypt_file_with_key(desensitized_path, encrypted_path, enc_key, enc_salt)
 
             if compress:
                 gz_path = Path(str(encrypted_path) + ".gz")
@@ -679,6 +709,66 @@ def _get_file_hash(path: Path) -> str:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def decrypt_tree(input_dir: Path, output_dir: Path, password: str) -> dict:
+    """Decrypt a whole migration output tree back to plaintext.
+
+    Walks ``input_dir`` for ``*.enc`` / ``*.enc.gz`` files (typically the
+    ``encrypted/`` directory produced by a migration), decrypts each, and
+    recreates the relative directory structure under ``output_dir`` with the
+    ``.enc``/``.gz`` suffixes stripped.
+
+    The key is derived once per distinct salt (a single migration run shares
+    one salt across all files), so PBKDF2 runs once rather than per file.
+    Returns a summary dict with decrypted/failed counts.
+    """
+    from .crypto import decrypt_data_with_key, read_salt, derive_key, CryptoError
+
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+
+    key_cache: dict[bytes, bytes] = {}
+    decrypted: list[str] = []
+    errors: list[str] = []
+
+    for enc_path in sorted(input_dir.rglob("*")):
+        if not enc_path.is_file():
+            continue
+        name = enc_path.name
+        if name.endswith(".enc.gz"):
+            blob = gzip.decompress(enc_path.read_bytes())
+            rel = enc_path.relative_to(input_dir).with_name(name[: -len(".enc.gz")])
+        elif name.endswith(".enc"):
+            blob = enc_path.read_bytes()
+            rel = enc_path.relative_to(input_dir).with_name(name[: -len(".enc")])
+        else:
+            continue
+
+        try:
+            salt = read_salt(blob)
+            if salt not in key_cache:
+                key_cache[salt] = derive_key(password, salt)
+            plaintext = decrypt_data_with_key(blob, key_cache[salt])
+        except CryptoError as exc:
+            errors.append(f"{enc_path.relative_to(input_dir)}: {exc}")
+            logger.error(f"[DECRYPT] Failed: {enc_path} ({exc})")
+            continue
+
+        dest = output_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(plaintext)
+        decrypted.append(str(rel))
+        logger.info(f"[DECRYPT] {enc_path.relative_to(input_dir)} → {dest}")
+
+    return {
+        "decrypted": decrypted,
+        "errors": errors,
+        "total_decrypted": len(decrypted),
+        "total_errors": len(errors),
+    }
 
 # Enhanced error handling (v1.2)
 class MigrationError(Exception):

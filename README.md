@@ -1,11 +1,19 @@
 # Offshore Data Migrator
 
-[![PyPI version](https://img.shields.io/pypi/v/offshore-data-migrator.svg)](https://pypi.org/project/offshore-data-migrator/)
-[![Python](https://img.shields.io/pypi/pyversions/offshore-data-migrator.svg)](https://pypi.org/project/offshore-data-migrator/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/offshore-data-migrator/offshore-data-migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/offshore-data-migrator/offshore-data-migrator/actions/workflows/ci.yml)
+[![CI](https://github.com/Hellotravisss/offshore-data-migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/Hellotravisss/offshore-data-migrator/actions/workflows/ci.yml)
 
-Secure, compliant data migration toolkit for offshore transfers. Automatically detects and desensitizes PII (Personally Identifiable Information), encrypts data with AES-256-GCM, and validates compliance against international data protection regulations.
+Secure, compliant data migration toolkit for offshore transfers. Automatically detects and desensitizes PII (Personally Identifiable Information), encrypts data with AES-256-GCM, and generates regulatory documentation for cross-border data protection regimes.
+
+## What this is — and what it isn't
+
+**Use it to** turn a directory of files containing PII into a **desensitized, encrypted** copy that is safe to move across borders (the design focus is **China ⇄ Singapore**, i.e. PIPL + PDPA), together with the paperwork those regimes expect.
+
+Two things to understand before you rely on it:
+
+- **Desensitization is irreversible.** Masked values (`alice@x.com` → `a***@x******.com`) cannot be recovered — even after you decrypt. `decrypt-all` gives you back the *masked* data, not the original. If you need to move **usable** raw data, this is not the right tool; use transport encryption without the masking step.
+- **Compliance output is documentation, not legal sign-off.** The `profiles`, `assessment`, and `--compliance-report` features generate checklists and declaration templates to *help* you prepare a filing. They do not constitute legal advice or a guarantee of compliance — have counsel review actual cross-border filings.
 
 ## Features
 
@@ -26,14 +34,10 @@ Secure, compliant data migration toolkit for offshore transfers. Automatically d
 
 ### Installation
 
-```bash
-pip install offshore-data-migrator
-```
-
-Or from source:
+Install from source:
 
 ```bash
-git clone https://github.com/offshore-data-migrator/offshore-data-migrator.git
+git clone https://github.com/Hellotravisss/offshore-data-migrator.git
 cd offshore-data-migrator
 pip install -e .
 ```
@@ -52,6 +56,9 @@ offshore-migrator encrypt input.csv output.csv.enc --password mypassword
 
 # Decrypt a file
 offshore-migrator decrypt output.csv.enc decrypted.csv --password mypassword
+
+# Restore an entire migration output tree (desensitized plaintext)
+offshore-migrator decrypt-all --input output/encrypted --output restored/ --password mypassword
 ```
 
 ### Using Environment Variables
@@ -70,6 +77,7 @@ offshore-migrator migrate --source data/ --output output/
 | `migrate`  | Run full migration pipeline                  |
 | `encrypt`  | Encrypt a single file                        |
 | `decrypt`  | Decrypt a single file                        |
+| `decrypt-all` | Decrypt a whole migration output tree     |
 | `init`     | Initialize project configuration             |
 | `verify`   | Verify file integrity against a manifest     |
 | `status`   | Show status of a previous migration          |
@@ -257,7 +265,7 @@ Source files → Classify → Desensitize PII → Encrypt (AES-256-GCM) → Mani
 
 ```bash
 # Clone and install
-git clone https://github.com/offshore-data-migrator/offshore-data-migrator.git
+git clone https://github.com/Hellotravisss/offshore-data-migrator.git
 cd offshore-data-migrator
 pip install -e .
 pip install pytest ruff

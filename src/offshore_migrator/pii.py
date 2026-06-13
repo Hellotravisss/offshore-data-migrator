@@ -38,8 +38,14 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+# Phone numbers must carry a signal that they ARE phone numbers — either an
+# international "+CC" prefix or at least one separator between digit groups.
+# This avoids masking bare integers (order IDs, counts, timestamps), which the
+# old greedy pattern swept up as false positives.
 PHONE_RE = re.compile(
-    r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}"
+    r"\+\d{1,3}[-.\s]?\d{2,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4}"  # +CC international
+    r"|"
+    r"\(?\d{2,4}\)?[-.\s]\d{3,4}[-.\s]?\d{3,4}"            # domestic, ≥1 separator
 )
 SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 CREDIT_CARD_RE = re.compile(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b")
@@ -149,9 +155,31 @@ def mask_ssn(val: str) -> str:
     return "***-**-" + val[-4:]
 
 
+def luhn_valid(number: str) -> bool:
+    """Return True if the digit string passes the Luhn checksum (all card
+    networks use it). Filters out random numeric strings that merely look
+    card-shaped."""
+    digits = [int(c) for c in number if c.isdigit()]
+    if len(digits) < 12:
+        return False
+    checksum = 0
+    parity = len(digits) % 2
+    for i, d in enumerate(digits):
+        if i % 2 == parity:
+            d *= 2
+            if d > 9:
+                d -= 9
+        checksum += d
+    return checksum % 10 == 0
+
+
 def mask_credit_card(val: str) -> str:
     clean = re.sub(r"[\s-]", "", val)
     if len(clean) < 8:
+        return val
+    # Only treat as a credit card if it passes the Luhn checksum; otherwise
+    # leave it for a more specific matcher (e.g. bank account) to handle.
+    if not luhn_valid(clean):
         return val
     return clean[:4] + "****" + clean[-4:]
 

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-01
+
+### Added
+- **Incremental migration / resume**: SQLite state DB tracks processed files by path + SHA-256 hash (`state.py`)
+- **ML-assisted PII detection**: optional `pii_ml.py` for content-based PII recognition
+- **`assessment` command**: generate a PIPL Security Assessment template (JSON + Markdown)
+- **`scan` command**: detect PII in a directory without migrating
+- **`decrypt-all` command**: restore an entire migration output tree in one step (derives the key once per distinct salt)
+- **Custom PII pattern registration** framework
+- Custom exception hierarchy with graceful CLI exit codes (`exceptions.py`)
+- Resume integration tests including state-corruption recovery
+
+### Fixed
+- `--resume` now detects content changes: an edited file (different hash) is re-processed instead of being skipped on output existence alone
+- Credit-card detection now validates the **Luhn checksum**, so random card-shaped numbers are no longer misclassified
+- Phone-number detection requires a separator or `+CC` prefix, eliminating false positives on bare integers (order IDs, counts)
+
+### Changed
+- **Encryption key is derived once per migration run** instead of once per file — PBKDF2 (480k iterations) no longer runs N times, dramatically speeding up many-file migrations. Output stays password-decryptable (the run salt is stored in every file header)
+- Version is now sourced solely from `offshore_migrator.__version__` (pyproject reads it dynamically)
+
+## [1.1.0] - 2026-06-01
+
+### Added
+- Route A: Deep PIPL (China) + PDPA (Singapore) support
+- `generate_compliance_report()` with security assessment + DPO notes
+- `--compliance-report` flag for migrate command (generates JSON + MD)
+- Enhanced `profiles` command with Route A details (DPO, Security Assessment, SLA, etc.)
+- `config/china.yaml` and `config/singapore.yaml`
+- Dynamic timestamp in compliance reports
+
+### Changed
+- `profiles` output now shows sensitive fields, cross-border paths, etc.
+- Timestamp in reports is now UTC ISO format instead of hardcoded
+
 ## [1.0.0] - 2026-05-28
 
 ### Added
@@ -56,20 +91,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI with `init`, `encrypt`, `decrypt`, `migrate` commands
 - Dry-run mode for migration preview
 - 39 comprehensive tests
-
-## [1.1.0] - 2026-06-01
-### Added
-- Route A: Deep PIPL (China) + PDPA (Singapore) support
-- `generate_compliance_report()` with security assessment + DPO notes
-- `--compliance-report` flag for migrate command (generates JSON + MD)
-- Enhanced `profiles` command with Route A details (DPO, Security Assessment, SLA, etc.)
-- `config/china.yaml` and `config/singapore.yaml`
-- Dynamic timestamp in compliance reports
-
-### Changed
-- `profiles` output now shows sensitive fields, cross-border paths, etc.
-- Timestamp in reports is now UTC ISO format instead of hardcoded
-
-### Verified
-- 134/134 tests passing
-- Full PIPL/PDPA report generation working

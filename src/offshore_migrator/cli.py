@@ -96,6 +96,20 @@ def decrypt_command(args):
     logger.info(f"Decrypted: {args.input} → {args.output}")
 
 
+def decrypt_all_command(args):
+    """Decrypt an entire migration output tree back to plaintext."""
+    from .migrate import decrypt_tree
+
+    password = _resolve_password(args)
+    report = decrypt_tree(Path(args.input), Path(args.output), password)
+    logger.info(f"Decrypted {report['total_decrypted']} file(s) → {args.output}")
+    if report["total_errors"]:
+        logger.warning(f"{report['total_errors']} file(s) failed to decrypt:")
+        for e in report["errors"]:
+            logger.warning(f"  {e}")
+        sys.exit(1)
+
+
 def migrate_command(args):
     """Run migration pipeline."""
     from .config import load_config, merge_config_with_args
@@ -595,6 +609,14 @@ Environment variables:
     p.add_argument("--password", default=None)
     p.add_argument("--key-file", default=None, help="Read password from file")
     p.set_defaults(func=decrypt_command)
+
+    # --- decrypt-all ---
+    p = sub.add_parser("decrypt-all", help="Decrypt a whole migration output tree")
+    p.add_argument("--input", required=True, help="Encrypted directory (e.g. output/encrypted)")
+    p.add_argument("--output", required=True, help="Directory for restored plaintext files")
+    p.add_argument("--password", default=None)
+    p.add_argument("--key-file", default=None, help="Read password from file")
+    p.set_defaults(func=decrypt_all_command)
 
     # --- migrate ---
     p = sub.add_parser("migrate", help="Run migration pipeline")
