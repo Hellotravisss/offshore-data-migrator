@@ -85,7 +85,7 @@ def load_config(path: Path) -> MigrationConfig:
                     register_custom_pii_pattern(name.strip(), pattern.strip())
         except Exception as e:
             import logging
-            logging.getLogger("OffshoreMigrator").warning(f"Failed to register custom PII patterns: {e}")
+            logging.getLogger("PIIGuard").warning(f"Failed to register custom PII patterns: {e}")
 
     return config
 
@@ -168,6 +168,6 @@ def merge_config_with_args(
                     register_custom_pii_pattern(name.strip(), pattern.strip())
         except Exception as e:
             import logging
-            logging.getLogger("OffshoreMigrator").warning(f"Failed to register custom PII patterns: {e}")
+            logging.getLogger("PIIGuard").warning(f"Failed to register custom PII patterns: {e}")
 
     return config

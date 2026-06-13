@@ -2,8 +2,8 @@
 
 import tempfile
 from pathlib import Path
-from offshore_migrator.state import MigrationState
-from offshore_migrator.migrate import run_migration
+from piiguard.state import MigrationState
+from piiguard.migrate import run_migration
 
 
 def test_migration_state_basic():

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from offshore_migrator.crypto import (
+from piiguard.crypto import (
     CryptoError,
     decrypt_data,
     decrypt_file,

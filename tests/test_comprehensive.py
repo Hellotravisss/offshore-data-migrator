@@ -95,57 +95,57 @@ def all_formats_dir(tmp_path, sample_xml, sample_tsv, sample_sqlite):
 
 class TestNewPIITypes:
     def test_mask_chinese_id(self):
-        from offshore_migrator.pii import mask_chinese_id
+        from piiguard.pii import mask_chinese_id
         assert "1101" in mask_chinese_id("110101199001011234")
         assert "***" in mask_chinese_id("110101199001011234")
         assert mask_chinese_id("110101199001011234").endswith("234")
 
     def test_mask_passport(self):
-        from offshore_migrator.pii import mask_passport
+        from piiguard.pii import mask_passport
         result = mask_passport("AB1234567")
         assert result.startswith("AB")
         assert "***" in result
         assert result.endswith("4567")
 
     def test_mask_bank_account(self):
-        from offshore_migrator.pii import mask_bank_account
+        from piiguard.pii import mask_bank_account
         result = mask_bank_account("1234567890123456")
         assert result.startswith("1234")
         assert "****" in result or "***" in result
         assert result.endswith("3456")
 
     def test_mask_iban(self):
-        from offshore_migrator.pii import mask_iban
+        from piiguard.pii import mask_iban
         result = mask_iban("GB29NWBK60161331926819")
         assert result.startswith("GB29")
         assert "****" in result
 
     def test_mask_mac(self):
-        from offshore_migrator.pii import mask_mac
+        from piiguard.pii import mask_mac
         result = mask_mac("00:1B:44:11:3A:B7")
         assert "00:1B" in result
         assert "**" in result
         assert result.endswith("B7")
 
     def test_mask_dob(self):
-        from offshore_migrator.pii import mask_dob
+        from piiguard.pii import mask_dob
         result = mask_dob("1990-01-15")
         assert "****" in result
         assert result.endswith("15")
 
     def test_chinese_id_in_mask_value(self):
-        from offshore_migrator.pii import mask_value
+        from piiguard.pii import mask_value
         result = mask_value("ID: 110101199001011234")
         assert "***" in result
         assert "110101199001011234" not in result
 
     def test_passport_in_mask_value(self):
-        from offshore_migrator.pii import mask_value
+        from piiguard.pii import mask_value
         result = mask_value("Passport: AB1234567")
         assert "***" in result
 
     def test_iban_in_mask_value(self):
-        from offshore_migrator.pii import mask_value
+        from piiguard.pii import mask_value
         result = mask_value("IBAN: GB29NWBK60161331926819")
         assert "GB29NWBK60161331926819" not in result
 
@@ -156,7 +156,7 @@ class TestNewPIITypes:
 
 class TestDesensitizeXML:
     def test_masks_text_content(self, sample_xml, tmp_path):
-        from offshore_migrator.pii import desensitize_xml
+        from piiguard.pii import desensitize_xml
         out = tmp_path / "out.xml"
         report = desensitize_xml(sample_xml, out)
         assert out.exists()
@@ -164,7 +164,7 @@ class TestDesensitizeXML:
         assert report.rows_processed > 0
 
     def test_output_is_valid_xml(self, sample_xml, tmp_path):
-        from offshore_migrator.pii import desensitize_xml
+        from piiguard.pii import desensitize_xml
         out = tmp_path / "out.xml"
         desensitize_xml(sample_xml, out)
         tree = ET.parse(out)
@@ -175,7 +175,7 @@ class TestDesensitizeXML:
             assert "***" in email
 
     def test_detects_pii_field_names(self, sample_xml, tmp_path):
-        from offshore_migrator.pii import desensitize_xml
+        from piiguard.pii import desensitize_xml
         out = tmp_path / "out.xml"
         report = desensitize_xml(sample_xml, out)
         assert "name" in report.fields_masked or "email" in report.fields_masked
@@ -187,7 +187,7 @@ class TestDesensitizeXML:
 
 class TestDesensitizeTSV:
     def test_masks_pii(self, sample_tsv, tmp_path):
-        from offshore_migrator.pii import desensitize_tsv
+        from piiguard.pii import desensitize_tsv
         out = tmp_path / "out.tsv"
         report = desensitize_tsv(sample_tsv, out)
         assert out.exists()
@@ -195,7 +195,7 @@ class TestDesensitizeTSV:
         assert report.rows_processed == 2
 
     def test_output_is_valid_tsv(self, sample_tsv, tmp_path):
-        from offshore_migrator.pii import desensitize_tsv
+        from piiguard.pii import desensitize_tsv
         out = tmp_path / "out.tsv"
         desensitize_tsv(sample_tsv, out)
         content = out.read_text()
@@ -213,7 +213,7 @@ class TestDesensitizeTSV:
 
 class TestDesensitizeSQLite:
     def test_masks_string_columns(self, sample_sqlite, tmp_path):
-        from offshore_migrator.pii import desensitize_sqlite
+        from piiguard.pii import desensitize_sqlite
         out = tmp_path / "out.sqlite"
         report = desensitize_sqlite(sample_sqlite, out)
         assert out.exists()
@@ -221,7 +221,7 @@ class TestDesensitizeSQLite:
         assert report.rows_processed == 2
 
     def test_output_is_valid_sqlite(self, sample_sqlite, tmp_path):
-        from offshore_migrator.pii import desensitize_sqlite
+        from piiguard.pii import desensitize_sqlite
         out = tmp_path / "out.sqlite"
         desensitize_sqlite(sample_sqlite, out)
 
@@ -234,7 +234,7 @@ class TestDesensitizeSQLite:
         conn.close()
 
     def test_preserves_non_string_columns(self, sample_sqlite, tmp_path):
-        from offshore_migrator.pii import desensitize_sqlite
+        from piiguard.pii import desensitize_sqlite
         out = tmp_path / "out.sqlite"
         desensitize_sqlite(sample_sqlite, out)
 
@@ -253,15 +253,15 @@ class TestDesensitizeSQLite:
 
 class TestFileClassificationNew:
     def test_classify_xml(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.xml")) == "xml"
 
     def test_classify_tsv(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.tsv")) == "tsv"
 
     def test_classify_sqlite(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.db")) == "sqlite"
         assert _classify_file(Path("data.sqlite")) == "sqlite"
         assert _classify_file(Path("data.sqlite3")) == "sqlite"
@@ -273,7 +273,7 @@ class TestFileClassificationNew:
 
 class TestMigrationAllFormats:
     def test_all_formats_processed(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -286,7 +286,7 @@ class TestMigrationAllFormats:
         assert len(report.errors) == 0
 
     def test_dry_run_all_formats(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -300,7 +300,7 @@ class TestMigrationAllFormats:
         assert not (out / "encrypted").exists()
 
     def test_parallel_all_formats(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -320,7 +320,7 @@ class TestMigrationAllFormats:
 
 class TestCompliance:
     def test_list_profiles(self):
-        from offshore_migrator.compliance import list_profiles
+        from piiguard.compliance import list_profiles
         profiles = list_profiles()
         assert "gdpr" in profiles
         assert "pdpa" in profiles
@@ -329,26 +329,26 @@ class TestCompliance:
         assert "pipl" in profiles
 
     def test_get_profile(self):
-        from offshore_migrator.compliance import get_profile
+        from piiguard.compliance import get_profile
         gdpr = get_profile("gdpr")
         assert gdpr.name == "gdpr"
         assert gdpr.encryption_required
         assert "email" in gdpr.required_pii_fields
 
     def test_get_profile_aliases(self):
-        from offshore_migrator.compliance import get_profile
+        from piiguard.compliance import get_profile
         assert get_profile("eu").name == "gdpr"
         assert get_profile("singapore").name == "pdpa"
         assert get_profile("china").name == "pipl"
         assert get_profile("brazil").name == "lgpd"
 
     def test_unknown_profile_raises(self):
-        from offshore_migrator.compliance import get_profile
+        from piiguard.compliance import get_profile
         with pytest.raises(ValueError, match="Unknown"):
             get_profile("nonexistent")
 
     def test_validate_migration_pass(self):
-        from offshore_migrator.compliance import get_profile, validate_migration
+        from piiguard.compliance import get_profile, validate_migration
         pii_report = {"file.csv": {"fields_masked": ["name", "email", "phone", "address", "national_id", "ssn",
                                                       "ip_address", "date_of_birth", "bank_account", "credit_card",
                                                       "full_name"]}}
@@ -356,13 +356,13 @@ class TestCompliance:
         assert len(violations) == 0
 
     def test_validate_migration_fail(self):
-        from offshore_migrator.compliance import get_profile, validate_migration
+        from piiguard.compliance import get_profile, validate_migration
         pii_report = {"file.csv": {"fields_masked": ["email"]}}
         violations = validate_migration(pii_report, get_profile("gdpr"))
         assert len(violations) > 0
 
     def test_migration_with_compliance(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -381,7 +381,7 @@ class TestCompliance:
 
 class TestIntegrity:
     def test_compute_sha256(self, tmp_path):
-        from offshore_migrator.integrity import compute_sha256
+        from piiguard.integrity import compute_sha256
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         h = compute_sha256(f)
@@ -390,7 +390,7 @@ class TestIntegrity:
         assert compute_sha256(f) == h
 
     def test_generate_manifest(self, tmp_path):
-        from offshore_migrator.integrity import generate_manifest
+        from piiguard.integrity import generate_manifest
         d = tmp_path / "data"
         d.mkdir()
         (d / "a.txt").write_text("aaa")
@@ -401,7 +401,7 @@ class TestIntegrity:
         assert "b.txt" in manifest
 
     def test_write_and_verify_manifest(self, tmp_path):
-        from offshore_migrator.integrity import write_manifest, verify_manifest
+        from piiguard.integrity import write_manifest, verify_manifest
         d = tmp_path / "data"
         d.mkdir()
         (d / "a.txt").write_text("aaa")
@@ -422,7 +422,7 @@ class TestIntegrity:
         assert any("MISMATCH" in m for m in mismatches)
 
     def test_detect_missing_file(self, tmp_path):
-        from offshore_migrator.integrity import write_manifest, verify_manifest
+        from piiguard.integrity import write_manifest, verify_manifest
         d = tmp_path / "data"
         d.mkdir()
         (d / "a.txt").write_text("aaa")
@@ -435,7 +435,7 @@ class TestIntegrity:
         assert any("MISSING" in m for m in mismatches)
 
     def test_directory_hash(self, tmp_path):
-        from offshore_migrator.integrity import compute_directory_hash
+        from piiguard.integrity import compute_directory_hash
         d = tmp_path / "data"
         d.mkdir()
         (d / "a.txt").write_text("aaa")
@@ -451,7 +451,7 @@ class TestIntegrity:
         assert h1 != h2
 
     def test_migration_generates_manifest(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -470,14 +470,14 @@ class TestIntegrity:
 
 class TestConfig:
     def test_default_config(self):
-        from offshore_migrator.config import default_config
+        from piiguard.config import default_config
         c = default_config()
         assert c.source == "examples"
         assert c.workers == 1
         assert c.encryption_method == "aes-256-gcm"
 
     def test_save_and_load_config(self, tmp_path):
-        from offshore_migrator.config import default_config, save_config, load_config
+        from piiguard.config import default_config, save_config, load_config
         c = default_config()
         c.workers = 4
         c.compliance_profile = "gdpr"
@@ -490,7 +490,7 @@ class TestConfig:
         assert loaded.compliance_profile == "gdpr"
 
     def test_load_missing_raises(self, tmp_path):
-        from offshore_migrator.config import load_config
+        from piiguard.config import load_config
         with pytest.raises(FileNotFoundError):
             load_config(tmp_path / "nonexistent.yaml")
 
@@ -501,7 +501,7 @@ class TestConfig:
 
 class TestAudit:
     def test_log_and_read_entries(self, tmp_path):
-        from offshore_migrator.audit import AuditLog, AuditEntry
+        from piiguard.audit import AuditLog, AuditEntry
         log_path = tmp_path / "audit.jsonl"
         audit = AuditLog(log_path)
 
@@ -519,7 +519,7 @@ class TestAudit:
         assert entries[0].file_path == "test.csv"
 
     def test_log_migration_events(self, tmp_path):
-        from offshore_migrator.audit import AuditLog
+        from piiguard.audit import AuditLog
         log_path = tmp_path / "audit.jsonl"
         audit = AuditLog(log_path)
 
@@ -532,7 +532,7 @@ class TestAudit:
         assert len(entries) == 4
 
     def test_get_summary(self, tmp_path):
-        from offshore_migrator.audit import AuditLog
+        from piiguard.audit import AuditLog
         log_path = tmp_path / "audit.jsonl"
         audit = AuditLog(log_path)
 
@@ -548,7 +548,7 @@ class TestAudit:
         assert summary["total_errors"] == 1
 
     def test_migration_creates_audit_log(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         audit_path = tmp_path / "audit.jsonl"
         run_migration(
@@ -571,7 +571,7 @@ class TestAudit:
 
 class TestCompressionAndResume:
     def test_compress_output(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,
@@ -588,7 +588,7 @@ class TestCompressionAndResume:
         assert len(gz_files) > 0
 
     def test_resume_skips_processed(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
 
         # First run
@@ -620,7 +620,7 @@ class TestCompressionAndResume:
 
 class TestSkipPatterns:
     def test_skip_patterns(self, all_formats_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=all_formats_dir,

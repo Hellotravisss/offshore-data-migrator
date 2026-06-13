@@ -72,7 +72,7 @@ def mixed_source_dir(tmp_path, sample_excel, sample_parquet):
 
 class TestDesensitizeExcel:
     def test_masks_pii_fields(self, sample_excel, tmp_path):
-        from offshore_migrator.pii import desensitize_excel
+        from piiguard.pii import desensitize_excel
         out = tmp_path / "out.xlsx"
         report = desensitize_excel(sample_excel, out)
 
@@ -83,7 +83,7 @@ class TestDesensitizeExcel:
 
     def test_output_is_valid_xlsx(self, sample_excel, tmp_path):
         import openpyxl
-        from offshore_migrator.pii import desensitize_excel
+        from piiguard.pii import desensitize_excel
         out = tmp_path / "out.xlsx"
         desensitize_excel(sample_excel, out)
 
@@ -99,7 +99,7 @@ class TestDesensitizeExcel:
 
     def test_empty_excel(self, tmp_path):
         import openpyxl
-        from offshore_migrator.pii import desensitize_excel
+        from piiguard.pii import desensitize_excel
         p = tmp_path / "empty.xlsx"
         wb = openpyxl.Workbook()
         wb.save(p)
@@ -117,7 +117,7 @@ class TestDesensitizeExcel:
 
 class TestDesensitizeParquet:
     def test_masks_string_columns(self, sample_parquet, tmp_path):
-        from offshore_migrator.pii import desensitize_parquet
+        from piiguard.pii import desensitize_parquet
         out = tmp_path / "out.parquet"
         report = desensitize_parquet(sample_parquet, out)
 
@@ -127,7 +127,7 @@ class TestDesensitizeParquet:
 
     def test_output_is_valid_parquet(self, sample_parquet, tmp_path):
         import pyarrow.parquet as pq
-        from offshore_migrator.pii import desensitize_parquet
+        from piiguard.pii import desensitize_parquet
         out = tmp_path / "out.parquet"
         desensitize_parquet(sample_parquet, out)
 
@@ -140,7 +140,7 @@ class TestDesensitizeParquet:
 
     def test_preserves_non_string_columns(self, sample_parquet, tmp_path):
         import pyarrow.parquet as pq
-        from offshore_migrator.pii import desensitize_parquet
+        from piiguard.pii import desensitize_parquet
         out = tmp_path / "out.parquet"
         desensitize_parquet(sample_parquet, out)
 
@@ -149,7 +149,7 @@ class TestDesensitizeParquet:
         assert ids == [1, 2, 3]
 
     def test_pii_fields_detected(self, sample_parquet, tmp_path):
-        from offshore_migrator.pii import desensitize_parquet
+        from piiguard.pii import desensitize_parquet
         out = tmp_path / "out.parquet"
         report = desensitize_parquet(sample_parquet, out)
         # full_name, email, ip_address should be detected
@@ -164,16 +164,16 @@ class TestDesensitizeParquet:
 
 class TestFileClassification:
     def test_classify_excel(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.xlsx")) == "excel"
         assert _classify_file(Path("data.xls")) == "excel"
 
     def test_classify_parquet(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.parquet")) == "parquet"
 
     def test_classify_existing_types(self):
-        from offshore_migrator.migrate import _classify_file
+        from piiguard.migrate import _classify_file
         assert _classify_file(Path("data.csv")) == "csv"
         assert _classify_file(Path("data.json")) == "json"
         assert _classify_file(Path("data.txt")) == "text"
@@ -186,7 +186,7 @@ class TestFileClassification:
 
 class TestMigrationNewTypes:
     def test_migration_includes_excel_parquet(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -202,7 +202,7 @@ class TestMigrationNewTypes:
         assert len(report.errors) == 0
 
     def test_dry_run_reports_excel_parquet(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -216,8 +216,8 @@ class TestMigrationNewTypes:
         assert not (out / "encrypted").exists()
 
     def test_encrypted_excel_is_decryptable(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
-        from offshore_migrator.crypto import decrypt_file
+        from piiguard.migrate import run_migration
+        from piiguard.crypto import decrypt_file
         out = tmp_path / "output"
         run_migration(
             source_dir=mixed_source_dir,
@@ -244,7 +244,7 @@ class TestMigrationNewTypes:
 
 class TestBatchProcessing:
     def test_batch_size_limits_files(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -256,7 +256,7 @@ class TestBatchProcessing:
         assert len(report.files_processed) == 2
 
     def test_parallel_workers(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -269,7 +269,7 @@ class TestBatchProcessing:
         assert len(report.errors) == 0
 
     def test_parallel_dry_run(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -282,7 +282,7 @@ class TestBatchProcessing:
         assert len(report.files_processed) == 5
 
     def test_report_includes_workers(self, mixed_source_dir, tmp_path):
-        from offshore_migrator.migrate import run_migration
+        from piiguard.migrate import run_migration
         out = tmp_path / "output"
         report = run_migration(
             source_dir=mixed_source_dir,
@@ -301,13 +301,13 @@ class TestBatchProcessing:
 
 class TestPreviewNewTypes:
     def test_preview_excel(self, sample_excel):
-        from offshore_migrator.migrate import _preview_file
+        from piiguard.migrate import _preview_file
         info = _preview_file(sample_excel, "excel")
         assert info["values_masked"] > 0
         assert info["rows_processed"] == 2
 
     def test_preview_parquet(self, sample_parquet):
-        from offshore_migrator.migrate import _preview_file
+        from piiguard.migrate import _preview_file
         info = _preview_file(sample_parquet, "parquet")
         assert info["values_masked"] > 0
         assert info["rows_processed"] == 3

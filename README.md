@@ -1,8 +1,8 @@
-# Offshore Data Migrator
+# PIIGuard
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/Hellotravisss/offshore-data-migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/Hellotravisss/offshore-data-migrator/actions/workflows/ci.yml)
+[![CI](https://github.com/Hellotravisss/piiguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Hellotravisss/piiguard/actions/workflows/ci.yml)
 
 Secure, compliant data migration toolkit for offshore transfers. Automatically detects and desensitizes PII (Personally Identifiable Information), encrypts data with AES-256-GCM, and generates regulatory documentation for cross-border data protection regimes.
 
@@ -37,8 +37,8 @@ Two things to understand before you rely on it:
 Install from source:
 
 ```bash
-git clone https://github.com/Hellotravisss/offshore-data-migrator.git
-cd offshore-data-migrator
+git clone https://github.com/Hellotravisss/piiguard.git
+cd piiguard
 pip install -e .
 ```
 
@@ -46,26 +46,26 @@ pip install -e .
 
 ```bash
 # Migrate a directory (desensitize + encrypt)
-offshore-migrator migrate --source data/ --output output/ --password mypassword
+piiguard migrate --source data/ --output output/ --password mypassword
 
 # Preview what would happen (dry run)
-offshore-migrator migrate --source data/ --dry-run
+piiguard migrate --source data/ --dry-run
 
 # Encrypt a single file
-offshore-migrator encrypt input.csv output.csv.enc --password mypassword
+piiguard encrypt input.csv output.csv.enc --password mypassword
 
 # Decrypt a file
-offshore-migrator decrypt output.csv.enc decrypted.csv --password mypassword
+piiguard decrypt output.csv.enc decrypted.csv --password mypassword
 
 # Restore an entire migration output tree (desensitized plaintext)
-offshore-migrator decrypt-all --input output/encrypted --output restored/ --password mypassword
+piiguard decrypt-all --input output/encrypted --output restored/ --password mypassword
 ```
 
 ### Using Environment Variables
 
 ```bash
 export ODM_PASSWORD=mypassword
-offshore-migrator migrate --source data/ --output output/
+piiguard migrate --source data/ --output output/
 ```
 
 ## CLI Reference
@@ -86,7 +86,7 @@ offshore-migrator migrate --source data/ --output output/
 ### migrate
 
 ```bash
-offshore-migrator migrate [OPTIONS]
+piiguard migrate [OPTIONS]
 
 Options:
   --source DIR            Source directory (default: examples)
@@ -112,22 +112,22 @@ Options:
 
 ```bash
 # Parallel processing with 4 workers
-offshore-migrator migrate --source data/ --output out/ --workers 4
+piiguard migrate --source data/ --output out/ --workers 4
 
 # GDPR compliance check
-offshore-migrator migrate --source data/ --compliance-profile gdpr
+piiguard migrate --source data/ --compliance-profile gdpr
 
 # Process only first 10 files
-offshore-migrator migrate --source data/ --batch-size 10
+piiguard migrate --source data/ --batch-size 10
 
 # Resume interrupted migration
-offshore-migrator migrate --source data/ --output out/ --resume
+piiguard migrate --source data/ --output out/ --resume
 
 # With audit log and compression
-offshore-migrator migrate --source data/ --audit out/audit.jsonl --compress
+piiguard migrate --source data/ --audit out/audit.jsonl --compress
 
 # Skip test files
-offshore-migrator migrate --source data/ --skip-patterns "test_*" "*.tmp"
+piiguard migrate --source data/ --skip-patterns "test_*" "*.tmp"
 ```
 
 ## Configuration File
@@ -156,7 +156,7 @@ field_mappings: {}
 Use it:
 
 ```bash
-offshore-migrator migrate --config migration.yaml
+piiguard migrate --config migration.yaml
 ```
 
 CLI arguments override config file values.
@@ -195,7 +195,7 @@ Field names containing keywords like `name`, `email`, `phone`, `ssn`, `address`,
 ## Compliance Profiles
 ## Route A Focus (v1.1.0+): China & Singapore Compliance
 
-**Offshore Data Migrator** is now optimized for **PIPL (China)** and **PDPA (Singapore)** — two of the strictest data protection regimes for cross-border transfers.
+**PIIGuard** is now optimized for **PIPL (China)** and **PDPA (Singapore)** — two of the strictest data protection regimes for cross-border transfers.
 
 ### Quick Start - PIPL (China)
 
@@ -212,7 +212,7 @@ Includes DPO requirements and 30-day access request handling notes.
 
 
 ```bash
-offshore-migrator profiles
+piiguard profiles
 ```
 
 | Profile | Jurisdiction | Key Requirements |
@@ -227,12 +227,12 @@ offshore-migrator profiles
 
 ```bash
 # Build
-docker build -t offshore-data-migrator .
+docker build -t piiguard .
 
 # Run
 docker run --rm -v $(pwd)/data:/data -v $(pwd)/output:/output \
   -e ODM_PASSWORD=mypassword \
-  offshore-data-migrator migrate --source /data --output /output
+  piiguard migrate --source /data --output /output
 ```
 
 Or with docker-compose:
@@ -244,7 +244,7 @@ ODM_PASSWORD=mypassword docker-compose run migrator
 ## Architecture
 
 ```
-offshore_migrator/
+piiguard/
 ├── __init__.py        # Version
 ├── cli.py             # CLI entry point (argparse)
 ├── crypto.py          # AES-256-GCM encryption
@@ -265,8 +265,8 @@ Source files → Classify → Desensitize PII → Encrypt (AES-256-GCM) → Mani
 
 ```bash
 # Clone and install
-git clone https://github.com/Hellotravisss/offshore-data-migrator.git
-cd offshore-data-migrator
+git clone https://github.com/Hellotravisss/piiguard.git
+cd piiguard
 pip install -e .
 pip install pytest ruff
 
@@ -288,17 +288,17 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ```bash
 # 1. List enhanced compliance profiles
-offshore-migrator profiles
+piiguard profiles
 
 # 2. Run migration with compliance report (PIPL)
-ODM_PASSWORD=yourpass offshore-migrator migrate \
+ODM_PASSWORD=yourpass piiguard migrate \
   --source examples \
   --output output/pipl \
   --compliance-profile pipl \
   --compliance-report
 
 # 3. Same for PDPA (Singapore)
-ODM_PASSWORD=yourpass offshore-migrator migrate \
+ODM_PASSWORD=yourpass piiguard migrate \
   --source examples \
   --output output/pdpa \
   --compliance-profile pdpa \
@@ -314,16 +314,16 @@ ODM_PASSWORD=yourpass offshore-migrator migrate \
 ### New Commands
 ```bash
 # Scan a directory for PII without migrating
-offshore-migrator scan --source data/ --output scan_report.json
+piiguard scan --source data/ --output scan_report.json
 
 # Generate PIPL Security Assessment template
-offshore-migrator assessment --output security_assessment.json
+piiguard assessment --output security_assessment.json
 ```
 
 ### Enhanced migrate command
 ```bash
 # Generate professional compliance report (JSON + Markdown)
-offshore-migrator migrate \
+piiguard migrate \
   --source examples \
   --compliance-profile pipl \
   --compliance-report
@@ -338,7 +338,7 @@ password: "your-password-here"
 
 ## Incremental Migration & Resume
 
-Offshore Data Migrator supports **incremental/resume** migrations using a local SQLite state database.
+PIIGuard supports **incremental/resume** migrations using a local SQLite state database.
 
 ### How it works
 
@@ -350,10 +350,10 @@ Offshore Data Migrator supports **incremental/resume** migrations using a local 
 
 ```bash
 # First run (processes everything)
-offshore-migrator migrate --source data/ --output out/ --resume
+piiguard migrate --source data/ --output out/ --resume
 
 # Later runs (only processes new or changed files)
-offshore-migrator migrate --source data/ --output out/ --resume
+piiguard migrate --source data/ --output out/ --resume
 ```
 
 ### State Database Location
@@ -374,8 +374,8 @@ If the state database becomes corrupted (e.g. interrupted write), the migrator w
 For advanced use cases, you can manage the state manually via the Python API:
 
 ```python
-from offshore_migrator.state import MigrationState
-from offshore_migrator.migrate import run_migration
+from piiguard.state import MigrationState
+from piiguard.migrate import run_migration
 from pathlib import Path
 
 state = MigrationState(Path("custom_state.db"))

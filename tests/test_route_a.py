@@ -1,6 +1,6 @@
 """Route A (PIPL + PDPA) specific tests."""
 
-from offshore_migrator.compliance import (
+from piiguard.compliance import (
     get_profile, 
     generate_compliance_report,
     generate_security_assessment_template
@@ -57,7 +57,7 @@ class TestComplianceReportGeneration:
 
 class TestCustomPII:
     def test_register_custom_pattern(self):
-        from offshore_migrator.pii import register_custom_pii_pattern, CUSTOM_PII_PATTERNS
+        from piiguard.pii import register_custom_pii_pattern, CUSTOM_PII_PATTERNS
         # Clear previous test patterns
         CUSTOM_PII_PATTERNS.clear()
         
@@ -68,7 +68,7 @@ class TestCustomPII:
 
 class TestIncrementalMigration:
     def test_state_db_creation(self):
-        from offshore_migrator.state import MigrationState
+        from piiguard.state import MigrationState
         from pathlib import Path
         import tempfile
         

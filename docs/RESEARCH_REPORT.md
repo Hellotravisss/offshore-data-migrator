@@ -1,7 +1,7 @@
 # Research Report: Canadian Data Sovereignty & Offshore Migration
 
 **Date**: May 2026
-**Prepared for**: Offshore Data Migrator Project
+**Prepared for**: PIIGuard Project
 **Route A Update (v1.1.0)**: Added PIPL & PDPA deep dive sections (researcher sub-agent)
 
 ## Executive Summary
@@ -50,7 +50,7 @@ Singapore has emerged as one of the most attractive destinations for companies s
 
 ## Recommendations
 
-1. **Start with Discovery**: Use tools like Offshore Data Migrator to understand data footprint
+1. **Start with Discovery**: Use tools like PIIGuard to understand data footprint
 2. **Prioritize Encryption**: Apply strong encryption to all sensitive assets
 3. **Choose Singapore as Primary Destination**: Best balance of compliance, infrastructure, and cost
 4. **Maintain Detailed Records**: Regulatory scrutiny is likely to increase

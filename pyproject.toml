@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "offshore-data-migrator"
+name = "piiguard"
 dynamic = ["version"]
 description = "PII desensitization + AES-256-GCM encryption + compliance reporting for cross-border data transfers (PIPL / PDPA / GDPR)"
 readme = "README.md"
@@ -34,16 +34,16 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Hellotravisss/offshore-data-migrator"
-Repository = "https://github.com/Hellotravisss/offshore-data-migrator"
-Changelog = "https://github.com/Hellotravisss/offshore-data-migrator/blob/main/CHANGELOG.md"
-Issues = "https://github.com/Hellotravisss/offshore-data-migrator/issues"
+Homepage = "https://github.com/Hellotravisss/piiguard"
+Repository = "https://github.com/Hellotravisss/piiguard"
+Changelog = "https://github.com/Hellotravisss/piiguard/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Hellotravisss/piiguard/issues"
 
 [project.scripts]
-offshore-migrator = "offshore_migrator.cli:main"
+piiguard = "piiguard.cli:main"
 
 [tool.setuptools.dynamic]
-version = {attr = "offshore_migrator.__version__"}
+version = {attr = "piiguard.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

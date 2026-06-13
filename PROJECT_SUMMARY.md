@@ -1,4 +1,4 @@
-# Offshore Data Migrator v1.0.0 - Project Summary
+# PIIGuard v1.0.0 - Project Summary
 
 ## Project Overview
 Production-ready Python toolkit for secure, compliant data migration with automatic PII desensitization and AES-256-GCM encryption.
@@ -36,8 +36,8 @@ Production-ready Python toolkit for secure, compliant data migration with automa
 ## Project Structure
 
 ```
-offshore-data-migrator/
-├── src/offshore_migrator/
+piiguard/
+├── src/piiguard/
 │   ├── __init__.py          # Version: 1.0.0
 │   ├── pii.py               # PII detection & masking (11 types)
 │   ├── crypto.py            # AES-256-GCM encryption
@@ -55,8 +55,8 @@ offshore-data-migrator/
 │   └── test_new_features.py
 ├── examples/                # Sample data files (all 8 formats)
 ├── dist/                    # Built packages
-│   ├── offshore_data_migrator-1.0.0-py3-none-any.whl
-│   └── offshore_data_migrator-1.0.0.tar.gz
+│   ├── piiguard-1.0.0-py3-none-any.whl
+│   └── piiguard-1.0.0.tar.gz
 ├── README.md                # Full documentation
 ├── CHANGELOG.md             # Version history
 ├── LICENSE                  # MIT License
@@ -71,38 +71,38 @@ offshore-data-migrator/
 
 ```bash
 # Initialize configuration
-offshore-migrator init --source data/ --output output/
+piiguard init --source data/ --output output/
 
 # Run migration (desensitize + encrypt)
-offshore-migrator migrate --source data/ --output encrypted/
+piiguard migrate --source data/ --output encrypted/
 
 # Dry run (preview only)
-offshore-migrator migrate --source data/ --dry-run
+piiguard migrate --source data/ --dry-run
 
 # Parallel processing with 4 workers
-offshore-migrator migrate --source data/ --workers 4
+piiguard migrate --source data/ --workers 4
 
 # With compliance validation (GDPR)
-offshore-migrator migrate --source data/ --compliance gdpr
+piiguard migrate --source data/ --compliance gdpr
 
 # With audit logging
-offshore-migrator migrate --source data/ --audit-log audit.jsonl
+piiguard migrate --source data/ --audit-log audit.jsonl
 
 # Resume interrupted migration
-offshore-migrator migrate --source data/ --resume
+piiguard migrate --source data/ --resume
 
 # Verify integrity
-offshore-migrator verify --manifest encrypted/manifest.json
+piiguard verify --manifest encrypted/manifest.json
 
 # Show migration status
-offshore-migrator status --report encrypted/migration_report.json
+piiguard status --report encrypted/migration_report.json
 
 # List compliance profiles
-offshore-migrator profiles
+piiguard profiles
 
 # Encrypt/decrypt individual files
-offshore-migrator encrypt file.csv file.csv.enc
-offshore-migrator decrypt file.csv.enc file.csv
+piiguard encrypt file.csv file.csv.enc
+piiguard decrypt file.csv.enc file.csv
 ```
 
 ## Test Coverage
@@ -217,35 +217,35 @@ offshore-migrator decrypt file.csv.enc file.csv
 
 ```
 dist/
-├── offshore_data_migrator-1.0.0-py3-none-any.whl  (35 KB)
-└── offshore_data_migrator-1.0.0.tar.gz             (48 KB)
+├── piiguard-1.0.0-py3-none-any.whl  (35 KB)
+└── piiguard-1.0.0.tar.gz             (48 KB)
 ```
 
 ## Installation
 
 ```bash
 # From PyPI (when published)
-pip install offshore-data-migrator
+pip install piiguard
 
 # From source
-git clone https://github.com/yourusername/offshore-data-migrator.git
-cd offshore-data-migrator
+git clone https://github.com/yourusername/piiguard.git
+cd piiguard
 pip install -e .
 
 # From wheel
-pip install dist/offshore_data_migrator-1.0.0-py3-none-any.whl
+pip install dist/piiguard-1.0.0-py3-none-any.whl
 ```
 
 ## Docker Usage
 
 ```bash
 # Build image
-docker build -t offshore-migrator .
+docker build -t piiguard .
 
 # Run migration
 docker run -v $(pwd)/data:/data -v $(pwd)/output:/output \
   -e ODM_PASSWORD=mypassword \
-  offshore-migrator migrate --source /data --output /output
+  piiguard migrate --source /data --output /output
 
 # Using docker-compose
 docker-compose run migrator migrate --source /data --output /output
@@ -284,6 +284,6 @@ docker-compose run migrator migrate --source /data --output /output
 
 ## Conclusion
 
-The Offshore Data Migrator v1.0.0 is a **production-ready, enterprise-grade tool** for secure data migration. It combines robust PII detection, military-grade encryption, and regulatory compliance validation in a single, easy-to-use package.
+The PIIGuard v1.0.0 is a **production-ready, enterprise-grade tool** for secure data migration. It combines robust PII detection, military-grade encryption, and regulatory compliance validation in a single, easy-to-use package.
 
 **Ready for deployment and PyPI publication.**

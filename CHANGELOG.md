@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Encryption key is derived once per migration run** instead of once per file — PBKDF2 (480k iterations) no longer runs N times, dramatically speeding up many-file migrations. Output stays password-decryptable (the run salt is stored in every file header)
-- Version is now sourced solely from `offshore_migrator.__version__` (pyproject reads it dynamically)
+- Version is now sourced solely from `piiguard.__version__` (pyproject reads it dynamically)
 
 ## [1.1.0] - 2026-06-01
 

@@ -11,7 +11,7 @@ Covers:
 
 import pytest
 
-from offshore_migrator.compliance import (
+from piiguard.compliance import (
     get_profile,
     validate_migration,
     generate_compliance_report,

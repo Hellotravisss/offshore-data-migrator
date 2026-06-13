@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from offshore_migrator.crypto import decrypt_data
-from offshore_migrator.migrate import run_migration
+from piiguard.crypto import decrypt_data
+from piiguard.migrate import run_migration
 
 
 class TestMigrationDryRun(unittest.TestCase):

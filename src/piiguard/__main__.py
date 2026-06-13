@@ -1,4 +1,4 @@
-"""Entry point for `python -m offshore_migrator`."""
+"""Entry point for `python -m piiguard`."""
 
 from .cli import main
 

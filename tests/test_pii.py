@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from offshore_migrator.pii import (
+from piiguard.pii import (
     desensitize_csv,
     desensitize_json,
     desensitize_text,

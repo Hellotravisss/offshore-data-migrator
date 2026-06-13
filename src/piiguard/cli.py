@@ -1,5 +1,5 @@
 """
-CLI entry point for Offshore Data Migrator.
+CLI entry point for PIIGuard.
 
 Commands:
   migrate   Run migration pipeline (desensitize → encrypt → verify)
@@ -25,7 +25,7 @@ from pathlib import Path
 from . import __version__
 from .crypto import encrypt_file, decrypt_file
 from .exceptions import (
-    OffshoreMigratorError,
+    PIIGuardError,
 )
 from .migrate import run_migration
 
@@ -46,7 +46,7 @@ def _setup_logging(log_file: str | None = None, verbose: bool = False):
         handlers=handlers,
     )
 
-logger = logging.getLogger("OffshoreMigrator")
+logger = logging.getLogger("PIIGuard")
 
 # ---------------------------------------------------------------------------
 # Commands
@@ -314,7 +314,7 @@ def profiles_command(args):
         print(f"    Notes: {profile.notes[:100]}...")
 
     print("\n" + "=" * 60)
-    print("  Use: offshore-migrator migrate --compliance pipl --compliance-report")
+    print("  Use: piiguard migrate --compliance pipl --compliance-report")
     print("=" * 60 + "\n")
 
 
@@ -560,15 +560,15 @@ def _format_compliance_report_md(report: dict) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Offshore Data Migrator — secure, compliant data migration.",
+        description="PIIGuard — secure, compliant data migration.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  offshore-migrator migrate --source data/ --output out/ --password mypw
-  offshore-migrator migrate --source data/ --dry-run --compliance gdpr
-  offshore-migrator verify --directory out/encrypted --manifest out/manifest.json
-  offshore-migrator status --report out/migration_report.json
-  offshore-migrator profiles
+  piiguard migrate --source data/ --output out/ --password mypw
+  piiguard migrate --source data/ --dry-run --compliance gdpr
+  piiguard verify --directory out/encrypted --manifest out/manifest.json
+  piiguard status --report out/migration_report.json
+  piiguard profiles
 
 Environment variables:
   ODM_PASSWORD    Encryption password (avoids interactive prompt)
@@ -668,7 +668,7 @@ Environment variables:
     if hasattr(args, "func"):
         try:
             args.func(args)
-        except OffshoreMigratorError as e:
+        except PIIGuardError as e:
             logger.error(f"{type(e).__name__}: {e}")
             sys.exit(1)
         except KeyboardInterrupt:

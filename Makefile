@@ -28,12 +28,12 @@ clean: ## Remove build artifacts
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
 smoke: ## Run CLI smoke test
-	PYTHONPATH=src python -m offshore_migrator.cli migrate --source examples --output /tmp/odm_smoke --password test --dry-run --no-progress
+	PYTHONPATH=src python -m piiguard.cli migrate --source examples --output /tmp/odm_smoke --password test --dry-run --no-progress
 	@echo "Smoke test passed."
 
 docker-build: ## Build Docker image
-	docker build -t offshore-data-migrator .
+	docker build -t piiguard .
 
 docker-run: ## Run migration in Docker (mount data/ and output/)
 	docker run --rm -v $(PWD)/data:/data -v $(PWD)/output:/output \
-		offshore-data-migrator migrate --source /data --output /output
+		piiguard migrate --source /data --output /output

@@ -1,4 +1,4 @@
-# Contributing to Offshore Data Migrator
+# Contributing to PIIGuard
 
 Thank you for your interest in contributing!
 
@@ -11,7 +11,7 @@ Thank you for your interest in contributing!
    ```
 3. Run the tool:
    ```bash
-   ./offshore-migrator --help
+   ./piiguard --help
    ```
 
 ## Code Style

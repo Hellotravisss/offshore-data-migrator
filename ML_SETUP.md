@@ -22,7 +22,7 @@ deactivate
 
 # Or manually
 source .venv-ml/bin/activate
-offshore-migrator migrate --source data/
+piiguard migrate --source data/
 deactivate
 ```
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # run-with-ml.sh
-# Run Offshore Data Migrator with ML PII detection enabled
+# Run PIIGuard with ML PII detection enabled
 
 set -e
 
@@ -24,8 +24,8 @@ echo "Activating ML environment..."
 source "$ML_VENV/bin/activate"
 
 # Run the migrator with all passed arguments
-echo "Running: offshore-migrator $*"
-offshore-migrator "$@"
+echo "Running: piiguard $*"
+piiguard "$@"
 
 # Deactivate (optional, since script ends)
 deactivate 2>/dev/null || true

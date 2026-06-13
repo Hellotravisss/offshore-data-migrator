@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir build \
 # Stage 2: Runtime
 FROM python:3.12-slim
 
-LABEL maintainer="Offshore Data Migrator"
+LABEL maintainer="PIIGuard"
 LABEL description="Secure, compliant offshore data migration toolkit"
 
 WORKDIR /app
@@ -22,5 +22,5 @@ RUN pip install --no-cache-dir /tmp/*.whl && rm -rf /tmp/*.whl
 # Default data directories
 VOLUME ["/data", "/output"]
 
-ENTRYPOINT ["offshore-migrator"]
+ENTRYPOINT ["piiguard"]
 CMD ["--help"]

@@ -36,7 +36,7 @@ from .pii import (
     desensitize_sqlite,
 )
 
-logger = logging.getLogger("OffshoreMigrator")
+logger = logging.getLogger("PIIGuard")
 
 # Threshold for large file warning (100 MB)
 LARGE_FILE_THRESHOLD = 100 * 1024 * 1024
