@@ -5,8 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "offshore-data-migrator"
 dynamic = ["version"]
-description = "Secure, compliant offshore data migration toolkit"
+description = "PII desensitization + AES-256-GCM encryption + compliance reporting for cross-border data transfers (PIPL / PDPA / GDPR)"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Hellotravisss"}]
 requires-python = ">=3.10"
+keywords = ["pii", "data-masking", "encryption", "compliance", "pipl", "pdpa", "gdpr", "data-privacy", "cross-border"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "cryptography>=42.0",
     "pyyaml>=6.0",
@@ -14,6 +32,12 @@ dependencies = [
     "pyarrow>=14.0",
     "tqdm>=4.60",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Hellotravisss/offshore-data-migrator"
+Repository = "https://github.com/Hellotravisss/offshore-data-migrator"
+Changelog = "https://github.com/Hellotravisss/offshore-data-migrator/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Hellotravisss/offshore-data-migrator/issues"
 
 [project.scripts]
 offshore-migrator = "offshore_migrator.cli:main"
