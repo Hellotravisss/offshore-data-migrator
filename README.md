@@ -4,7 +4,27 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Hellotravisss/cloakpii/actions/workflows/ci.yml/badge.svg)](https://github.com/Hellotravisss/cloakpii/actions/workflows/ci.yml)
 
-Secure, compliant data migration toolkit for offshore transfers. Automatically detects and desensitizes PII (Personally Identifiable Information), encrypts data with AES-256-GCM, and generates regulatory documentation for cross-border data protection regimes.
+**Mask the PII in your data files, encrypt the result with AES-256-GCM, and generate the compliance paperwork for moving it across borders — in one command.**
+
+CloakPII auto-detects 11 kinds of personal data (emails, phones, national IDs, cards, IBANs… including **Chinese ID numbers and Chinese column names**), masks them irreversibly, encrypts every file, and produces a compliance report. Built for the strictest regimes — **PIPL (China)** and **PDPA (Singapore)** — plus GDPR, CCPA, and LGPD.
+
+```bash
+pip install cloakpii
+```
+
+```bash
+# Desensitize + encrypt a folder, and emit a PIPL compliance report
+cloakpii migrate --source ./data --output ./safe --password "$PW" \
+  --compliance-profile pipl --compliance-report
+```
+
+```text
+# before                              # after (in ./safe/desensitized)
+name,email,phone                      name,email,phone
+Wei,wei@corp.cn,138-1234-5678         W***,w***@c******.cn,138-****-**78
+```
+
+Encrypted copies land in `./safe/encrypted/` (AES-256-GCM). Restore the whole tree any time with `cloakpii decrypt-all`.
 
 ## What this is — and what it isn't
 
@@ -34,7 +54,11 @@ Two things to understand before you rely on it:
 
 ### Installation
 
-Install from source:
+```bash
+pip install cloakpii
+```
+
+Or from source:
 
 ```bash
 git clone https://github.com/Hellotravisss/cloakpii.git
