@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-13
+
+### Added
+- **Reversible tokenization mode** (`migrate --mode tokenize`): replaces PII with
+  deterministic, reversible pseudonyms instead of irreversible masks. The **same
+  value always maps to the same token** — even across separate runs with the same
+  password — so joins, GROUP BY, de-duplication and referential integrity are
+  preserved. The masked data stays *usable* for analytics, not just archival.
+- **`detokenize` command**: reverses tokenization back to original values across a
+  decrypted tree, re-parsing each format (so Parquet/Excel/SQLite round-trip
+  correctly, not just text). Requires the same password.
+- New `tokenize.py` module — AES-GCM-SIV deterministic AEAD, key derived from the
+  password with a fixed salt for cross-run stability.
+
+### Changed
+- Per-cell transform logic unified into a single `_transform_cell` helper shared by
+  all 8 format desensitizers (mask / tokenize / detokenize), removing duplication.
+
 ## [1.2.0] - 2026-06-01
 
 ### Added

@@ -126,6 +126,7 @@ def run_migration(
     skip_patterns: Optional[list[str]] = None,
     resume: bool = False,
     state=None,  # MigrationState for incremental processing
+    mode: str = "mask",  # "mask" (irreversible) or "tokenize" (reversible pseudonyms)
 ) -> MigrationReport:
     """
     Execute migration pipeline: discover → desensitize → encrypt → verify.
@@ -182,6 +183,18 @@ def run_migration(
         try:
             enc_salt = os.urandom(SALT_LEN)
             enc_key = derive_key(password, enc_salt)
+        except CryptoError as exc:
+            report.errors.append(str(exc))
+            logger.error(str(exc))
+            return report
+
+    # Tokenization mode uses a deterministic, reversible pseudonymizer keyed by
+    # the password (built once and shared across files).
+    tokenizer = None
+    if mode == "tokenize":
+        from .tokenize import Tokenizer
+        try:
+            tokenizer = Tokenizer(password)
         except CryptoError as exc:
             report.errors.append(str(exc))
             logger.error(str(exc))
@@ -253,9 +266,9 @@ def run_migration(
             logger.warning(f"  {f.relative_to(source_dir)}: {size / (1024*1024):.1f} MB")
 
     if workers <= 1:
-        _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state)
+        _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state, mode, tokenizer)
     else:
-        _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state)
+        _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state, mode, tokenizer)
 
     # Compliance validation
     if compliance_profile and not dry_run:
@@ -309,21 +322,21 @@ def run_migration(
     return report
 
 
-def _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state=None):
+def _process_sequential(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, show_progress, compress, audit, state=None, transform_mode="mask", tokenizer=None):
     """Process files one by one."""
     iterator = _maybe_tqdm(files, "Processing", show_progress)
     for filepath in iterator:
-        _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state)
+        _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state, transform_mode, tokenizer)
 
 
-def _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state=None):
+def _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, workers, show_progress, compress, state=None, transform_mode="mask", tokenizer=None):
     """Process files in parallel using ThreadPoolExecutor."""
     results = []
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_file = {
             executor.submit(
                 _process_single_file_standalone,
-                filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state
+                filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state, transform_mode, tokenizer
             ): filepath
             for filepath in files
         }
@@ -358,7 +371,7 @@ def _process_parallel(files, source_dir, output_dir, enc_key, enc_salt, dry_run,
             report.errors.append(error)
 
 
-def _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state=None):
+def _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, mode_label, report, compress, audit, state=None, transform_mode="mask", tokenizer=None):
     """Process a single file (sequential mode)."""
     rel = filepath.relative_to(source_dir)
     file_type = _classify_file(filepath)
@@ -392,8 +405,8 @@ def _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dr
             desensitized_path = output_dir / "desensitized" / rel
             encrypted_path = output_dir / "encrypted" / (str(rel) + ".enc")
 
-            pii_info = _desensitize_file(filepath, desensitized_path, file_type)
-            
+            pii_info = _desensitize_file(filepath, desensitized_path, file_type, transform_mode, tokenizer)
+
             # Mark as processed in state
             if state is not None:
                 file_hash = _get_file_hash(filepath)
@@ -427,7 +440,7 @@ def _process_single_file(filepath, source_dir, output_dir, enc_key, enc_salt, dr
                 audit.log_error(str(rel), str(exc))
 
 
-def _process_single_file_standalone(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state=None):
+def _process_single_file_standalone(filepath, source_dir, output_dir, enc_key, enc_salt, dry_run, compress, state=None, transform_mode="mask", tokenizer=None):
     """Process a single file (parallel mode — no shared state)."""
     rel = filepath.relative_to(source_dir)
     file_type = _classify_file(filepath)
@@ -449,8 +462,8 @@ def _process_single_file_standalone(filepath, source_dir, output_dir, enc_key, e
             desensitized_path = output_dir / "desensitized" / rel
             encrypted_path = output_dir / "encrypted" / (str(rel) + ".enc")
 
-            pii_info = _desensitize_file(filepath, desensitized_path, file_type)
-            
+            pii_info = _desensitize_file(filepath, desensitized_path, file_type, transform_mode, tokenizer)
+
             # Mark as processed in state
             if state is not None:
                 file_hash = _get_file_hash(filepath)
@@ -671,8 +684,9 @@ def _preview_sqlite(filepath: Path) -> dict:
     return info
 
 
-def _desensitize_file(filepath: Path, output_path: Path, file_type: str) -> dict:
-    """Desensitize a file and return PII report info."""
+def _desensitize_file(filepath: Path, output_path: Path, file_type: str,
+                      mode="mask", tokenizer=None) -> dict:
+    """Transform a file (mask/tokenize/detokenize) and return PII report info."""
     desensitizers = {
         "csv": desensitize_csv,
         "json": desensitize_json,
@@ -684,10 +698,10 @@ def _desensitize_file(filepath: Path, output_path: Path, file_type: str) -> dict
     }
 
     if file_type in desensitizers:
-        r = desensitizers[file_type](filepath, output_path)
+        r = desensitizers[file_type](filepath, output_path, mode=mode, tokenizer=tokenizer)
     elif file_type == "text":
         text = filepath.read_text(encoding="utf-8")
-        masked, count = desensitize_text(text)
+        masked, count = desensitize_text(text, mode=mode, tokenizer=tokenizer)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(masked, encoding="utf-8")
         return {"fields_masked": [], "values_masked": count, "rows_processed": 1}
@@ -768,6 +782,54 @@ def decrypt_tree(input_dir: Path, output_dir: Path, password: str) -> dict:
         "total_decrypted": len(decrypted),
         "total_errors": len(errors),
     }
+
+
+def detokenize_tree(input_dir: Path, output_dir: Path, password: str) -> dict:
+    """Reverse tokenization across a (decrypted) tree produced by ``migrate
+    --mode tokenize``.
+
+    Re-parses each supported file and replaces every ``tkz_...`` token with its
+    original value (so Parquet/Excel/SQLite are handled correctly, not just
+    text formats). Files of unknown type are copied through unchanged.
+    Requires the same password used at tokenization time.
+    """
+    import shutil
+    from .tokenize import Tokenizer
+
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+
+    tokenizer = Tokenizer(password)
+    detokenized: list[str] = []
+    errors: list[str] = []
+
+    for f in sorted(input_dir.rglob("*")):
+        if not f.is_file():
+            continue
+        rel = f.relative_to(input_dir)
+        dest = output_dir / rel
+        file_type = _classify_file(f)
+        try:
+            if file_type is not None:
+                _desensitize_file(f, dest, file_type, mode="detokenize", tokenizer=tokenizer)
+                detokenized.append(str(rel))
+                logger.info(f"[DETOKENIZE] {rel}")
+            else:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(f, dest)
+        except Exception as exc:
+            errors.append(f"{rel}: {exc}")
+            logger.error(f"[DETOKENIZE] Failed: {rel} ({exc})")
+
+    return {
+        "detokenized": detokenized,
+        "errors": errors,
+        "total_detokenized": len(detokenized),
+        "total_errors": len(errors),
+    }
+
 
 # Enhanced error handling (v1.2)
 class MigrationError(Exception):

@@ -272,6 +272,40 @@ def _is_pii_field(field_name: str) -> bool:
     return any(kw in lower for kw in NAME_KEYWORDS)
 
 
+def _transform_cell(value, field_name="", mode="mask", tokenizer=None):
+    """Single source of truth for transforming one cell/value.
+
+    Modes:
+      - "mask"       : irreversible partial masking (default, original behaviour)
+      - "tokenize"   : replace a whole PII value with a stable reversible token
+      - "detokenize" : reverse any tokens found back to the original value
+
+    Returns (new_value, changed).
+    """
+    if not isinstance(value, str) or not value:
+        return value, False
+
+    if mode == "tokenize":
+        if not value.strip():
+            return value, False
+        is_pii = (bool(field_name) and _is_pii_field(field_name)) or (mask_value(value) != value)
+        if is_pii:
+            return tokenizer.tokenize(value), True
+        return value, False
+
+    if mode == "detokenize":
+        from .tokenize import TOKEN_RE
+        if TOKEN_RE.search(value):
+            return tokenizer.detokenize_text(value), True
+        return value, False
+
+    # default: mask
+    masked = mask_value(value)
+    if masked == value and field_name and _is_pii_field(field_name) and value.strip():
+        masked = mask_generic(value)
+    return masked, masked != value
+
+
 # ---------------------------------------------------------------------------
 # Desensitization stats
 # ---------------------------------------------------------------------------
@@ -288,10 +322,19 @@ class DesensitizeReport:
 # Text
 # ---------------------------------------------------------------------------
 
-def desensitize_text(text: str) -> tuple:
-    """Mask PII in plain text. Returns (masked_text, count_of_replacements)."""
+def desensitize_text(text: str, mode="mask", tokenizer=None) -> tuple:
+    """Transform PII in plain text. Returns (new_text, count_of_replacements).
+
+    mode="mask" partially masks each match; mode="tokenize" replaces each match
+    with a reversible token; mode="detokenize" restores tokens to originals.
+    """
+    if mode == "detokenize":
+        from .tokenize import TOKEN_RE
+        count = len(TOKEN_RE.findall(text))
+        return tokenizer.detokenize_text(text), count
+
     count = 0
-    
+
     # Define all pattern-masker pairs explicitly
     pattern_maskers = [
         (SSN_RE, mask_ssn),
@@ -305,7 +348,7 @@ def desensitize_text(text: str) -> tuple:
         (MAC_ADDRESS_RE, mask_mac),
         (PHONE_RE, mask_phone),
     ]
-    
+
     # Process each pattern
     for pattern, masker_fn in pattern_maskers:
         def make_replacer(fn):
@@ -313,9 +356,11 @@ def desensitize_text(text: str) -> tuple:
             def _replace(m):
                 nonlocal count
                 count += 1
+                if mode == "tokenize":
+                    return tokenizer.tokenize(m.group())
                 return fn(m.group())
             return _replace
-        
+
         text = pattern.sub(make_replacer(masker_fn), text)
 
     # Apply custom patterns
@@ -326,6 +371,8 @@ def desensitize_text(text: str) -> tuple:
                 def _replace(m):
                     nonlocal count
                     count += 1
+                    if mode == "tokenize":
+                        return tokenizer.tokenize(m.group())
                     return f"[{pname}]"
                 return _replace
             text = custom_re.sub(make_custom_replacer(name), text)
@@ -339,8 +386,8 @@ def desensitize_text(text: str) -> tuple:
 # CSV
 # ---------------------------------------------------------------------------
 
-def desensitize_csv(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read CSV, mask PII in every cell, write to output_path."""
+def desensitize_csv(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read CSV, transform PII in every cell, write to output_path."""
     report = DesensitizeReport()
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -358,13 +405,10 @@ def desensitize_csv(input_path: Path, output_path: Path) -> DesensitizeReport:
             report.rows_processed += 1
             for fn in fieldnames:
                 original = row.get(fn, "")
-                masked = mask_value(original)
-                # If field name suggests PII and regex didn't catch it, do generic mask
-                if masked == original and _is_pii_field(fn) and original.strip():
-                    masked = mask_generic(original)
-                if masked != original:
+                new_value, changed = _transform_cell(original, fn, mode, tokenizer)
+                if changed:
                     report.values_masked += 1
-                row[fn] = masked
+                row[fn] = new_value
             rows.append(row)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -380,31 +424,30 @@ def desensitize_csv(input_path: Path, output_path: Path) -> DesensitizeReport:
 # JSON
 # ---------------------------------------------------------------------------
 
-def _desensitize_json_node(node: Any, report: DesensitizeReport, parent_key: str = "") -> Any:
-    """Recursively walk a JSON structure and mask PII values."""
+def _desensitize_json_node(node: Any, report: DesensitizeReport, parent_key: str = "",
+                           mode="mask", tokenizer=None) -> Any:
+    """Recursively walk a JSON structure and transform PII values."""
     if isinstance(node, dict):
         result = {}
         for k, v in node.items():
-            result[k] = _desensitize_json_node(v, report, parent_key=k)
+            result[k] = _desensitize_json_node(v, report, parent_key=k, mode=mode, tokenizer=tokenizer)
         return result
     elif isinstance(node, list):
-        return [_desensitize_json_node(item, report, parent_key=parent_key) for item in node]
+        return [_desensitize_json_node(item, report, parent_key=parent_key, mode=mode, tokenizer=tokenizer)
+                for item in node]
     elif isinstance(node, str):
-        original = node
-        masked = mask_value(node)
-        if masked == original and _is_pii_field(parent_key) and original.strip():
-            masked = mask_generic(original)
-        if masked != original:
+        new_value, changed = _transform_cell(node, parent_key, mode, tokenizer)
+        if changed:
             report.values_masked += 1
             if parent_key and parent_key not in report.fields_masked:
                 report.fields_masked.append(parent_key)
-        return masked
+        return new_value
     else:
         return node
 
 
-def desensitize_json(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read JSON, mask PII recursively, write to output_path."""
+def desensitize_json(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read JSON, transform PII recursively, write to output_path."""
     report = DesensitizeReport()
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -415,7 +458,7 @@ def desensitize_json(input_path: Path, output_path: Path) -> DesensitizeReport:
     if isinstance(data, list):
         report.rows_processed = len(data)
 
-    masked_data = _desensitize_json_node(data, report)
+    masked_data = _desensitize_json_node(data, report, mode=mode, tokenizer=tokenizer)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -428,8 +471,8 @@ def desensitize_json(input_path: Path, output_path: Path) -> DesensitizeReport:
 # Excel (.xlsx)
 # ---------------------------------------------------------------------------
 
-def desensitize_excel(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read Excel workbook, mask PII in all sheets, write to output_path."""
+def desensitize_excel(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read Excel workbook, transform PII in all sheets, write to output_path."""
     import openpyxl
 
     report = DesensitizeReport()
@@ -459,12 +502,10 @@ def desensitize_excel(input_path: Path, output_path: Path) -> DesensitizeReport:
                     continue
                 original = str(cell.value)
                 fn = fieldnames[idx] if idx < len(fieldnames) else ""
-                masked = mask_value(original)
-                if masked == original and _is_pii_field(str(fn)) and original.strip():
-                    masked = mask_generic(original)
-                if masked != original:
+                new_value, changed = _transform_cell(original, str(fn), mode, tokenizer)
+                if changed:
                     report.values_masked += 1
-                    cell.value = masked
+                    cell.value = new_value
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
@@ -477,8 +518,8 @@ def desensitize_excel(input_path: Path, output_path: Path) -> DesensitizeReport:
 # Parquet (.parquet)
 # ---------------------------------------------------------------------------
 
-def desensitize_parquet(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read Parquet file, mask PII in string columns, write to output_path."""
+def desensitize_parquet(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read Parquet file, transform PII in string columns, write to output_path."""
     import pyarrow.parquet as pq
     import pyarrow as pa
 
@@ -512,12 +553,10 @@ def desensitize_parquet(input_path: Path, output_path: Path) -> DesensitizeRepor
                     masked_values.append(None)
                     continue
                 original = str(val)
-                masked = mask_value(original)
-                if masked == original and _is_pii_field(fld.name) and original.strip():
-                    masked = mask_generic(original)
-                if masked != original:
+                new_value, changed = _transform_cell(original, fld.name, mode, tokenizer)
+                if changed:
                     report.values_masked += 1
-                masked_values.append(masked)
+                masked_values.append(new_value)
             new_columns.append(pa.array(masked_values, type=fld.type))
         else:
             new_columns.append(col)
@@ -534,8 +573,8 @@ def desensitize_parquet(input_path: Path, output_path: Path) -> DesensitizeRepor
 # XML (.xml)
 # ---------------------------------------------------------------------------
 
-def desensitize_xml(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read XML file, mask PII in text content and attributes, write to output_path."""
+def desensitize_xml(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read XML file, transform PII in text content and attributes, write to output_path."""
     report = DesensitizeReport()
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -544,46 +583,31 @@ def desensitize_xml(input_path: Path, output_path: Path) -> DesensitizeReport:
     root = tree.getroot()
 
     def _mask_element(elem):
-        """Recursively mask PII in an XML element."""
-        # Mask text content
+        """Recursively transform PII in an XML element."""
+        # Element text — use the tag name as the field-name hint
         if elem.text and elem.text.strip():
-            original = elem.text
-            masked = mask_value(original)
-            if masked != original:
+            new_value, changed = _transform_cell(elem.text, elem.tag, mode, tokenizer)
+            if changed:
                 report.values_masked += 1
-                elem.text = masked
+                if _is_pii_field(elem.tag) and elem.tag not in report.fields_masked:
+                    report.fields_masked.append(elem.tag)
+                elem.text = new_value
 
-        # Mask tail (text after closing tag)
+        # Tail text (after closing tag) — no field-name context
         if elem.tail and elem.tail.strip():
-            original = elem.tail
-            masked = mask_value(original)
-            if masked != original:
+            new_value, changed = _transform_cell(elem.tail, "", mode, tokenizer)
+            if changed:
                 report.values_masked += 1
-                elem.tail = masked
+                elem.tail = new_value
 
-        # Mask attributes
+        # Attributes
         for attr_name, attr_val in list(elem.attrib.items()):
-            masked = mask_value(attr_val)
-            # Also check if attribute name suggests PII
-            if masked == attr_val and _is_pii_field(attr_name) and attr_val.strip():
-                masked = mask_generic(attr_val)
-            if masked != attr_val:
+            new_value, changed = _transform_cell(attr_val, attr_name, mode, tokenizer)
+            if changed:
                 report.values_masked += 1
                 if attr_name not in report.fields_masked:
                     report.fields_masked.append(attr_name)
-                elem.set(attr_name, masked)
-
-        # Check if element tag name suggests PII
-        if _is_pii_field(elem.tag) and elem.text and elem.text.strip():
-            original = elem.text
-            masked = mask_value(original)
-            if masked == original:
-                masked = mask_generic(original)
-            if masked != original:
-                report.values_masked += 1
-                if elem.tag not in report.fields_masked:
-                    report.fields_masked.append(elem.tag)
-                elem.text = masked
+                elem.set(attr_name, new_value)
 
         report.rows_processed += 1
 
@@ -608,8 +632,8 @@ def desensitize_xml(input_path: Path, output_path: Path) -> DesensitizeReport:
 # TSV (Tab-Separated Values)
 # ---------------------------------------------------------------------------
 
-def desensitize_tsv(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Read TSV file, mask PII in every cell, write to output_path."""
+def desensitize_tsv(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Read TSV file, transform PII in every cell, write to output_path."""
     report = DesensitizeReport()
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -627,13 +651,10 @@ def desensitize_tsv(input_path: Path, output_path: Path) -> DesensitizeReport:
             report.rows_processed += 1
             for fn in fieldnames:
                 original = row.get(fn, "")
-                masked = mask_value(original)
-                # If field name suggests PII and regex didn't catch it, do generic mask
-                if masked == original and _is_pii_field(fn) and original.strip():
-                    masked = mask_generic(original)
-                if masked != original:
+                new_value, changed = _transform_cell(original, fn, mode, tokenizer)
+                if changed:
                     report.values_masked += 1
-                row[fn] = masked
+                row[fn] = new_value
             rows.append(row)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -649,8 +670,8 @@ def desensitize_tsv(input_path: Path, output_path: Path) -> DesensitizeReport:
 # SQLite (.db, .sqlite, .sqlite3)
 # ---------------------------------------------------------------------------
 
-def desensitize_sqlite(input_path: Path, output_path: Path) -> DesensitizeReport:
-    """Copy SQLite database and mask PII in all string columns."""
+def desensitize_sqlite(input_path: Path, output_path: Path, mode="mask", tokenizer=None) -> DesensitizeReport:
+    """Copy SQLite database and transform PII in all string columns."""
     report = DesensitizeReport()
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -708,15 +729,10 @@ def desensitize_sqlite(input_path: Path, output_path: Path) -> DesensitizeReport
                     continue
 
                 original_str = str(original)
-                masked = mask_value(original_str)
-
-                # Field name heuristic
-                if masked == original_str and _is_pii_field(col_name) and original_str.strip():
-                    masked = mask_generic(original_str)
-
-                if masked != original_str:
+                new_value, changed = _transform_cell(original_str, col_name, mode, tokenizer)
+                if changed:
                     report.values_masked += 1
-                    updates[col_name] = masked
+                    updates[col_name] = new_value
 
             # Update the row if any changes
             if updates:

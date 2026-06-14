@@ -26,17 +26,47 @@ Wei,wei@corp.cn,138-1234-5678         W***,w***@c******.cn,138-****-**78
 
 Encrypted copies land in `./safe/encrypted/` (AES-256-GCM). Restore the whole tree any time with `cloakpii decrypt-all`.
 
+## Two modes: mask (irreversible) or tokenize (reversible)
+
+```bash
+# Reversible, join-preserving pseudonyms — masked data stays usable
+cloakpii migrate --source ./data --output ./safe --password "$PW" --mode tokenize
+```
+
+In `--mode tokenize`, every PII value is replaced by a stable token, and **the same
+input always maps to the same token** (even across separate runs with the same
+password):
+
+```text
+email,city                              email,city
+wei@corp.cn,SH        ──tokenize──▶     tkz_p6dk3s7…,SH    ┐ same value →
+wei@corp.cn,BJ                          tkz_p6dk3s7…,BJ    ┘ same token (joins work)
+li@corp.cn,SH                           tkz_cx5kz36…,SH
+```
+
+So you can still **join, GROUP BY, and de-duplicate** the protected data — and
+recover the originals with the password:
+
+```bash
+cloakpii decrypt-all  --input ./safe/encrypted --output ./restored --password "$PW"
+cloakpii detokenize   --input ./restored       --output ./original  --password "$PW"
+```
+
+Use **mask** (the default) when the data should never be recoverable; use
+**tokenize** when downstream systems still need referential integrity.
+
 ## What this is — and what it isn't
 
 **Use it to** turn a directory of files containing PII into a **desensitized, encrypted** copy that is safe to move across borders (the design focus is **China ⇄ Singapore**, i.e. PIPL + PDPA), together with the paperwork those regimes expect.
 
 Two things to understand before you rely on it:
 
-- **Desensitization is irreversible.** Masked values (`alice@x.com` → `a***@x******.com`) cannot be recovered — even after you decrypt. `decrypt-all` gives you back the *masked* data, not the original. If you need to move **usable** raw data, this is not the right tool; use transport encryption without the masking step.
+- **Masking (the default mode) is irreversible.** Masked values (`alice@x.com` → `a***@x******.com`) cannot be recovered — even after you decrypt. If you need the data to stay **usable** (joins, dedup) and recoverable, use `--mode tokenize` instead (see above).
 - **Compliance output is documentation, not legal sign-off.** The `profiles`, `assessment`, and `--compliance-report` features generate checklists and declaration templates to *help* you prepare a filing. They do not constitute legal advice or a guarantee of compliance — have counsel review actual cross-border filings.
 
 ## Features
 
+- **Two modes**: irreversible **masking** or reversible, join-preserving **tokenization**
 - **8 file formats**: CSV, JSON, Excel, Parquet, XML, TSV, SQLite, plain text
 - **11 PII types**: email, phone, SSN, credit card, IP, Chinese ID, passport, bank account, IBAN, MAC address, date of birth
 - **5 compliance profiles**: GDPR (EU), PDPA (Singapore), CCPA (California), LGPD (Brazil), PIPL (China)
@@ -102,6 +132,7 @@ cloakpii migrate --source data/ --output output/
 | `encrypt`  | Encrypt a single file                        |
 | `decrypt`  | Decrypt a single file                        |
 | `decrypt-all` | Decrypt a whole migration output tree     |
+| `detokenize` | Reverse `--mode tokenize` back to originals |
 | `init`     | Initialize project configuration             |
 | `verify`   | Verify file integrity against a manifest     |
 | `status`   | Show status of a previous migration          |
@@ -115,6 +146,7 @@ cloakpii migrate [OPTIONS]
 Options:
   --source DIR            Source directory (default: examples)
   --output DIR            Output directory (default: output)
+  --mode MODE             mask (irreversible, default) | tokenize (reversible)
   --target NAME           Target jurisdiction (default: singapore)
   --password PW           Encryption password (or use ODM_PASSWORD env var)
   --config FILE           Path to YAML config file

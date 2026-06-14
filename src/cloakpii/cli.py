@@ -104,6 +104,20 @@ def decrypt_all_command(args):
         sys.exit(1)
 
 
+def detokenize_command(args):
+    """Reverse tokenization (migrate --mode tokenize) back to original values."""
+    from .migrate import detokenize_tree
+
+    password = _resolve_password(args)
+    report = detokenize_tree(Path(args.input), Path(args.output), password)
+    logger.info(f"Detokenized {report['total_detokenized']} file(s) → {args.output}")
+    if report["total_errors"]:
+        logger.warning(f"{report['total_errors']} file(s) failed to detokenize:")
+        for e in report["errors"]:
+            logger.warning(f"  {e}")
+        sys.exit(1)
+
+
 def migrate_command(args):
     """Run migration pipeline."""
     from .config import load_config, merge_config_with_args
@@ -177,6 +191,7 @@ def migrate_command(args):
         skip_patterns=skip_patterns,
         resume=resume,
         state=state,
+        mode=getattr(args, "mode", "mask"),
     )
 
     # Write report
@@ -612,11 +627,21 @@ Environment variables:
     p.add_argument("--key-file", default=None, help="Read password from file")
     p.set_defaults(func=decrypt_all_command)
 
+    # --- detokenize ---
+    p = sub.add_parser("detokenize", help="Reverse tokens (migrate --mode tokenize) back to originals")
+    p.add_argument("--input", required=True, help="Directory of decrypted, tokenized files")
+    p.add_argument("--output", required=True, help="Directory for restored original files")
+    p.add_argument("--password", default=None)
+    p.add_argument("--key-file", default=None, help="Read password from file")
+    p.set_defaults(func=detokenize_command)
+
     # --- migrate ---
     p = sub.add_parser("migrate", help="Run migration pipeline")
     p.add_argument("--source", default="examples", help="Source directory")
     p.add_argument("--output", default="output", help="Output directory")
     p.add_argument("--target", default="singapore", help="Target jurisdiction")
+    p.add_argument("--mode", choices=["mask", "tokenize"], default="mask",
+                   help="mask = irreversible (default); tokenize = reversible, join-preserving pseudonyms")
     p.add_argument("--password", default=None, help="Encryption password")
     p.add_argument("--key-file", default=None, help="Read password from file")
     p.add_argument("--config", default=None, help="Path to YAML config file")
